@@ -51,35 +51,26 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.FULL_IMAGE_NAME }}
+          images: |
+            ${{ env.FULL_IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=latest
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Extract metadata for Docker cache
-        id: cache-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.FULL_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-          flavor: |
-            prefix=cache-${{ matrix.platform }}-
-
-      - name: Build Docker image (latest)
+      - name: Build and Push Docker image
         uses: docker/build-push-action@v5
-        id: build
         with:
           context: .
           push: true
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.FULL_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          tags: ${{ env.FULL_IMAGE_NAME }}:latest
           cache-from: type=registry,ref=${{ steps.cache-meta.outputs.tags }}
           cache-to: type=registry,ref=${{ steps.cache-meta.outputs.tags }},mode=max
           build-args: |
